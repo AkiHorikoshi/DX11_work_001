@@ -304,6 +304,65 @@ void Sprite_Draw(int texid, const XMFLOAT2& dPos, const XMFLOAT2& dSize, const X
 	g_pContext->Draw(NUM_VERTEX, 0);
 }
 
+void Sprite_Draw(int texid, const XMFLOAT2& dPos, const XMFLOAT2& dSize, const XMFLOAT2& pPos, const XMFLOAT2& pSize, const XMFLOAT4& color)
+{
+	// シェーダーを描画パイプラインに設定
+	Shader_Begin();
+
+	// 頂点バッファをロックする
+	D3D11_MAPPED_SUBRESOURCE msr;
+	g_pContext->Map(g_pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+
+	// 頂点バッファへの仮想ポインタを取得
+	Vertex* v = (Vertex*)msr.pData;
+
+	// ポリゴン頂点
+	v[0].position = { dPos.x          , dPos.y          , 0.0f };
+	v[1].position = { dPos.x + dSize.x, dPos.y          , 0.0f };
+	v[2].position = { dPos.x          , dPos.y + dSize.y, 0.0f };
+	v[3].position = { dPos.x + dSize.x, dPos.y + dSize.y, 0.0f };
+
+	//頂点カラー
+	v[0].color = color;
+	v[1].color = color;
+	v[2].color = color;
+	v[3].color = color;
+
+	//float tw = (float)GetTextureWidth(texid);
+	//float th = (float)GetTextureHeight(texid);
+
+	//float u0 = pPos.x / tw;
+	//float v0 = pPos.y / th;
+	//float u1 = (pPos.x + pSize.x) / tw;
+	//float v1 = (pPos.y + pSize.y) / th;
+
+	// uv座標
+	v[0].texcoord = { pPos.x          , pPos.y           };
+	v[1].texcoord = { pPos.x + pSize.x, pPos.y           };
+	v[2].texcoord = { pPos.x          , pPos.y + pSize.y };
+	v[3].texcoord = { pPos.x + pSize.x, pPos.y + pSize.y };
+
+	// 頂点バッファのロックを解除
+	g_pContext->Unmap(g_pVertexBuffer, 0);
+
+	// ワールド変換行列を設定
+	Shader_SetWorldMatrix(XMMatrixIdentity());
+
+	// 頂点バッファを描画パイプラインに設定
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+
+	// プリミティブトポロジ設定
+	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// テクスチャ設定
+	TextureSetTexture(texid);
+
+	// ポリゴン描画命令発行
+	g_pContext->Draw(NUM_VERTEX, 0);
+}
+
 void Sprite_Draw(int texid, const XMFLOAT2& dPos, const XMFLOAT2& dSize, const XMUINT2& pPos, const XMUINT2& pSize, float angle, const XMFLOAT4& color)
 {
 	// シェーダーを描画パイプラインに設定

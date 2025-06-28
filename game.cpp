@@ -21,12 +21,17 @@ using namespace DirectX;
 
 
 /*=============================    定数定義     ===============================*/
-enum ANIMID
-{
-	BACK_GROUND,
+enum BACKID
+{// 背景、テキスト管理番号
 	BACK_SKY,
 	BACK_SUN,
+	BACK_GROUND,
 	TEXT_UTE,
+	BACK_MAX
+};
+
+enum ANIMID
+{// キャラクター管理番号
 	R_WALK,
 	L_WALK,
 	NEMUI,
@@ -35,11 +40,22 @@ enum ANIMID
 	ANIMID_MAX
 };
 
-constexpr int BACK_MAX = BACK_SUN + 1;
 
 /*===========================    構造体定義     =============================*/
+struct BackGround
+{// 背景、テキスト用ステータス
+	int m_texid;			// テクスチャID管理
+	XMFLOAT2 m_pos;			// ポリゴン左上座標
+	XMFLOAT2 m_size;		// ポリゴンサイズ
+	XMFLOAT2 m_texcoord;	// UV左上座標
+	XMFLOAT2 m_texsize;		// テクスチャをWRAPで何回繰り返すか
+	float m_scrollspeed;	// スクロールスピード
+	float m_angle;			// 回転角度
+	float m_anglespeed;		// 回転速度
+};
+
 struct Character
-{
+{// キャラクター用ステータス
 	int m_texid;
 	int m_animid;
 	int m_pid;
@@ -50,10 +66,8 @@ struct Character
 
 
 /*==========================    グローバル変数     ============================*/
-Character g_sprite[ANIMID_MAX]{};
-static XMUINT2 g_Scroll[BACK_MAX]{};
-static int g_ScrollSpeed[BACK_MAX]{};
-static float g_angle{};
+BackGround g_Back[BACK_MAX]{};
+Character g_Chara[ANIMID_MAX];
 
 
 /*=============================    関数宣言     ===============================*/
@@ -64,63 +78,70 @@ void GameInitialize()
 	SpriteAnimInitialize();
 
 	/**********************************  背景画像初期化  **************************************/
-	g_sprite[BACK_GROUND].m_texid  = TextureLoad(L"resource/texture/siba.png");
-	g_sprite[BACK_GROUND].m_animid = SpriteAnimRefisterPattern(g_sprite[BACK_GROUND].m_texid, 1, 1, 1.0, { 0, 0 }, { 425, 340 }, false);
-	g_sprite[BACK_GROUND].m_pid    = SpriteAnimCreatePlayer(g_sprite[BACK_GROUND].m_animid);
-	g_sprite[BACK_GROUND].m_pos    = { 0.0f, 0.0f };
-	g_sprite[BACK_GROUND].m_size   = { SCREEN_WIDTH, SCREEN_HEIGHT };
-	g_Scroll[BACK_GROUND] = { 1, 0 };
-	g_ScrollSpeed[BACK_GROUND] = -100;
+	g_Back[BACK_SKY].m_texid = TextureLoad(L"resource/texture/sky.png");
+	g_Back[BACK_SKY].m_pos   = { 0.0f, 0.0f };
+	g_Back[BACK_SKY].m_size  = { SCREEN_WIDTH, SCREEN_HEIGHT };
+	g_Back[BACK_SKY].m_texcoord = { 0.0f, 0.0f };
+	g_Back[BACK_SKY].m_texsize  = { 2.0f, 1.0f };
+	g_Back[BACK_SKY].m_scrollspeed = -0.1f;
+	g_Back[BACK_SKY].m_angle = 0.0f;
+	g_Back[BACK_SKY].m_anglespeed = 0.0f;
 
-	g_sprite[BACK_SKY].m_texid = TextureLoad(L"resource/texture/sky.png");
-	g_sprite[BACK_SKY].m_animid = SpriteAnimRefisterPattern(g_sprite[BACK_SKY].m_texid, 1, 1, 1.0, { 0, 0 }, { 425, 340 }, false);
-	g_sprite[BACK_SKY].m_pid = SpriteAnimCreatePlayer(g_sprite[BACK_SKY].m_animid);
-	g_sprite[BACK_SKY].m_pos = { 0.0f, 0.0f };
-	g_sprite[BACK_SKY].m_size = { SCREEN_WIDTH, SCREEN_HEIGHT };
-	g_Scroll[BACK_SKY] = { 1, 0 };
-	g_ScrollSpeed[BACK_SKY] = -30;
+	g_Back[BACK_SUN].m_texid  = TextureLoad(L"resource/texture/sun.png");
+	g_Back[BACK_SUN].m_pos    = { SCREEN_WIDTH - 172.0f, 0.0f + 32.0f };
+	g_Back[BACK_SUN].m_size   = { 128, 128 };
+	g_Back[BACK_SUN].m_texcoord = { 0.0f, 0.0f };
+	g_Back[BACK_SUN].m_texsize  = { 1.0f, 1.0f };
+	g_Back[BACK_SUN].m_scrollspeed = 0.0f;
+	g_Back[BACK_SUN].m_angle = 0.0f;
+	g_Back[BACK_SUN].m_anglespeed = (XM_2PI / 6);
 
-	g_sprite[BACK_SUN].m_texid = TextureLoad(L"resource/texture/sun.png");
-	g_sprite[BACK_SUN].m_animid = SpriteAnimRefisterPattern(g_sprite[BACK_SUN].m_texid, 1, 1, 1.0, { 0, 0 }, { 425, 340 }, false);
-	g_sprite[BACK_SUN].m_pid = SpriteAnimCreatePlayer(g_sprite[BACK_SUN].m_animid);
-	g_sprite[BACK_SUN].m_pos = { SCREEN_WIDTH - 172.0f, 0.0f + 32.0f};
-	g_sprite[BACK_SUN].m_size = { 128, 128 };
-	g_Scroll[BACK_SUN] = { 0, 0 };
-	g_ScrollSpeed[BACK_SUN] = 0;
+	g_Back[BACK_GROUND].m_texid  = TextureLoad(L"resource/texture/siba.png");
+	g_Back[BACK_GROUND].m_pos    = { 0.0f, 0.0f };
+	g_Back[BACK_GROUND].m_size   = { SCREEN_WIDTH, SCREEN_HEIGHT };
+	g_Back[BACK_GROUND].m_texcoord = { 0.0f, 0.0f };
+	g_Back[BACK_GROUND].m_texsize  = { 3.0f, 1.0f };
+	g_Back[BACK_GROUND].m_scrollspeed = -0.5f;
+	g_Back[BACK_GROUND].m_angle = 0.0f;
+	g_Back[BACK_GROUND].m_anglespeed = 0.0f;
 
 	/**********************************  テキスト画像初期化  **************************************/
-	g_sprite[TEXT_UTE].m_texid  = TextureLoad(L"resource/texture/text_ute.png");
-	g_sprite[TEXT_UTE].m_animid = SpriteAnimRefisterPattern(g_sprite[TEXT_UTE].m_texid, 1, 1, 1.0, { 0, 0 }, { 512, 256 }, false);
-	g_sprite[TEXT_UTE].m_pid    = SpriteAnimCreatePlayer(g_sprite[TEXT_UTE].m_animid);
-	g_sprite[TEXT_UTE].m_pos    = { 0.0f, 0.0f };
-	g_sprite[TEXT_UTE].m_size   = { SCREEN_WIDTH, 256.0f };
+	g_Back[TEXT_UTE].m_texid  = TextureLoad(L"resource/texture/text_ute.png");
+	g_Back[TEXT_UTE].m_pos    = { 0.0f, 32.0f };
+	g_Back[TEXT_UTE].m_size   = { SCREEN_WIDTH, 128 };
+	g_Back[TEXT_UTE].m_texcoord = { 0.0f, 0.0f };
+	g_Back[TEXT_UTE].m_texsize  = { 2.0f, 1.0 };
+	g_Back[TEXT_UTE].m_scrollspeed = -0.8f;
+	g_Back[TEXT_UTE].m_angle = 0.0f;
+	g_Back[TEXT_UTE].m_anglespeed = 0.0f;
+
 
 	/**********************************  ココ素材各種初期化  **************************************/
 	// テクスチャ読み込み
 	for (int i = 0; i < TRESURE + 1 - R_WALK; i++)
 	{
-		g_sprite[i + R_WALK].m_texid = TextureLoad(L"resource/texture/kokosozai.png");
+		g_Chara[i + R_WALK].m_texid = TextureLoad(L"resource/texture/kokosozai.png");
 	}
 
 	// アニメーションパターン設定
-	g_sprite[R_WALK].m_animid  = SpriteAnimRefisterPattern(g_sprite[R_WALK].m_texid, 13, 16, 0.1, { 0     ,  0     }, { 32, 32 }, true);
-	g_sprite[L_WALK].m_animid  = SpriteAnimRefisterPattern(g_sprite[L_WALK].m_texid, 13, 16, 0.3, { 0     , 32 * 1 }, { 32, 32 }, true);
-	g_sprite[NEMUI].m_animid   = SpriteAnimRefisterPattern(g_sprite[NEMUI].m_texid,  15, 16, 0.1, { 0     , 32 * 4 }, { 32, 32 }, true);
-	g_sprite[TRESURE].m_animid = SpriteAnimRefisterPattern(g_sprite[TRESURE].m_texid, 4, 16, 0.1, { 32 * 2, 32 * 5 }, { 32, 32 }, false);
+	g_Chara[R_WALK].m_animid  = SpriteAnimRefisterPattern(g_Chara[R_WALK].m_texid, 13, 16, 0.1, { 0     ,  0     }, { 32, 32 }, true);
+	g_Chara[L_WALK].m_animid  = SpriteAnimRefisterPattern(g_Chara[L_WALK].m_texid, 13, 16, 0.3, { 0     , 32 * 1 }, { 32, 32 }, true);
+	g_Chara[NEMUI].m_animid   = SpriteAnimRefisterPattern(g_Chara[NEMUI].m_texid,  15, 16, 0.1, { 0     , 32 * 4 }, { 32, 32 }, true);
+	g_Chara[TRESURE].m_animid = SpriteAnimRefisterPattern(g_Chara[TRESURE].m_texid, 4, 16, 0.1, { 32 * 2, 32 * 5 }, { 32, 32 }, false);
 
 	// 再生対象番号
-	g_sprite[R_WALK].m_pid  = SpriteAnimCreatePlayer(g_sprite[R_WALK].m_animid);
-	g_sprite[L_WALK].m_pid  = SpriteAnimCreatePlayer(g_sprite[L_WALK].m_animid);
-	g_sprite[NEMUI].m_pid   = SpriteAnimCreatePlayer(g_sprite[NEMUI].m_animid);
-	g_sprite[TRESURE].m_pid = SpriteAnimCreatePlayer(g_sprite[TRESURE].m_animid);
+	g_Chara[R_WALK].m_pid  = SpriteAnimCreatePlayer(g_Chara[R_WALK].m_animid);
+	g_Chara[L_WALK].m_pid  = SpriteAnimCreatePlayer(g_Chara[L_WALK].m_animid);
+	g_Chara[NEMUI].m_pid   = SpriteAnimCreatePlayer(g_Chara[NEMUI].m_animid);
+	g_Chara[TRESURE].m_pid = SpriteAnimCreatePlayer(g_Chara[TRESURE].m_animid);
 
 
 	/**********************************  ランニングマン初期化  **************************************/
-	g_sprite[RUNNER].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
-	g_sprite[RUNNER].m_animid = SpriteAnimRefisterPattern(g_sprite[RUNNER].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
-	g_sprite[RUNNER].m_pid    = SpriteAnimCreatePlayer(g_sprite[RUNNER].m_animid);
-	g_sprite[RUNNER].m_pos    = { SCREEN_WIDTH * 0.5f - 128.0f,SCREEN_HEIGHT * 0.5f};
-	g_sprite[RUNNER].m_size   = { 256.0f,256.0f };
+	g_Chara[RUNNER].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
+	g_Chara[RUNNER].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
+	g_Chara[RUNNER].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER].m_animid);
+	g_Chara[RUNNER].m_pos    = { SCREEN_WIDTH * 0.5f - 128.0f,SCREEN_HEIGHT * 0.5f};
+	g_Chara[RUNNER].m_size   = { 256.0f,256.0f };
 }
 
 void GameFinalize()
@@ -128,8 +149,34 @@ void GameFinalize()
 }
 
 void GameUpdata(double elapsed_time)
-{	// ゲームの更新
+{
+	/**********************************    画像更新    **************************************/
+	/* UVスクロール  Uの値を加算 */
+	g_Back[BACK_SKY].m_texcoord.x += g_Back[BACK_SKY].m_scrollspeed * elapsed_time;
+	g_Back[BACK_SKY].m_texcoord.x = fmodf(g_Back[BACK_SKY].m_texcoord.x, g_Back[BACK_SKY].m_texsize.x);
+	if (g_Back[BACK_SKY].m_texcoord.x < 0)
+	{
+		g_Back[BACK_SKY].m_texcoord.x += g_Back[BACK_SKY].m_texsize.x;
+	}
 
+	g_Back[BACK_GROUND].m_texcoord.x += g_Back[BACK_GROUND].m_scrollspeed * elapsed_time;
+	g_Back[BACK_GROUND].m_texcoord.x = fmodf(g_Back[BACK_GROUND].m_texcoord.x, g_Back[BACK_GROUND].m_texsize.x);
+	if (g_Back[BACK_GROUND].m_texcoord.x < 0)
+	{
+		g_Back[BACK_GROUND].m_texcoord.x += g_Back[BACK_GROUND].m_texsize.x;
+	}
+
+	g_Back[TEXT_UTE].m_texcoord.x += g_Back[TEXT_UTE].m_scrollspeed * elapsed_time;
+	g_Back[TEXT_UTE].m_texcoord.x = fmodf(g_Back[TEXT_UTE].m_texcoord.x, g_Back[TEXT_UTE].m_texsize.x);
+	if (g_Back[TEXT_UTE].m_texcoord.x < 0)
+	{
+		g_Back[TEXT_UTE].m_texcoord.x += g_Back[TEXT_UTE].m_texsize.x;
+	}
+
+	g_Back[BACK_SUN].m_angle += g_Back[BACK_SUN].m_anglespeed * (float)elapsed_time;
+
+
+	/**********************************  キャラクター更新  **************************************/
 	for (int i = 0; i < ANIM_PLAY_MAX; i++)
 	{
 		if (i == R_WALK)
@@ -142,27 +189,16 @@ void GameUpdata(double elapsed_time)
 		}
 	}
 
-	g_Scroll[BACK_GROUND].x += g_ScrollSpeed[BACK_GROUND] * elapsed_time;
-	if (g_Scroll[BACK_GROUND].x <= 100)
-	{
-		g_Scroll[BACK_GROUND].x = SCREEN_WIDTH;
-	}
-
-	g_Scroll[BACK_SKY].x += g_ScrollSpeed[BACK_SKY] * elapsed_time;
-	if (g_Scroll[BACK_SKY].x <= 100)
-	{
-		g_Scroll[BACK_SKY].x = SCREEN_WIDTH;
-	}
-
-	g_angle += (XM_2PI * 1 / 3)* (float)elapsed_time;
 }
 
 void GameDraw()
 {
-	Sprite_Draw(g_sprite[BACK_SKY].m_pid, g_sprite[BACK_SKY].m_pos, g_sprite[BACK_SKY].m_size, { 10 + g_Scroll[BACK_SKY].x, 0 }, { SCREEN_WIDTH, 630 });
-	Sprite_Draw(g_sprite[BACK_GROUND].m_pid, g_sprite[BACK_GROUND].m_pos, g_sprite[BACK_GROUND].m_size, { 10 + g_Scroll[BACK_GROUND].x, 0 }, { SCREEN_WIDTH, 340 });
-	Sprite_Draw(g_sprite[BACK_SUN].m_pid, g_sprite[BACK_SUN].m_pos, g_sprite[BACK_SUN].m_size, { 0, 0 }, { 296, 300 }, g_angle);
-	//Sprite_Draw(g_sprite[TEXT_UTE].m_animid, g_sprite[TEXT_UTE].m_pos, g_sprite[TEXT_UTE].m_size, { 0, 0 }, { SCREEN_WIDTH, 256});
-	//SpriteAnimDraw(g_sprite[R_WALK].m_animid, { (int)(SCREEN_WIDTH * 0.5f - 128.0f) - 128, (int)(SCREEN_HEIGHT * 0.5f - 128.0f) }, { 256, 256 });
-	SpriteAnimDraw(g_sprite[RUNNER].m_pid, g_sprite[RUNNER].m_pos, g_sprite[RUNNER].m_size);
+	/* 背景、テキスト表示 */
+	Sprite_Draw(g_Back[BACK_SKY].m_texid   , g_Back[BACK_SKY].m_pos   , g_Back[BACK_SKY].m_size   , g_Back[BACK_SKY].m_texcoord   , g_Back[BACK_SKY].m_texsize);
+	Sprite_Draw(g_Back[BACK_GROUND].m_texid, g_Back[BACK_GROUND].m_pos, g_Back[BACK_GROUND].m_size, g_Back[BACK_GROUND].m_texcoord, g_Back[BACK_GROUND].m_texsize);
+	Sprite_Draw(g_Back[BACK_SUN].m_texid   , g_Back[BACK_SUN].m_pos   , g_Back[BACK_SUN].m_size   , { 0, 0 }, { 296, 300 }        , g_Back[BACK_SUN].m_angle);
+	Sprite_Draw(g_Back[TEXT_UTE].m_texid   , g_Back[TEXT_UTE].m_pos   , g_Back[TEXT_UTE].m_size   , g_Back[TEXT_UTE].m_texcoord   , g_Back[TEXT_UTE].m_texsize);
+
+	/* キャラクター表示 */
+	SpriteAnimDraw(g_Chara[RUNNER].m_pid, g_Chara[RUNNER].m_pos, g_Chara[RUNNER].m_size);
 }

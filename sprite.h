@@ -32,6 +32,10 @@ void Sprite_Draw(int texid, const DirectX::XMFLOAT2& dPos, const DirectX::XMFLOA
 // 引数 : テクスチャID  ポリゴン左上ｘ  ポリゴン左上y  ポリゴンwigth  ポリゴンheight　UV座標左上x  UV座標左上y   UVサイズwigth  UVサイズheight  頂点カラー(デフォルト白)
 void Sprite_Draw(int texid, const DirectX::XMFLOAT2& dPos, const DirectX::XMFLOAT2& dSize, const DirectX::XMUINT2& pPos, const DirectX::XMUINT2& pSize, const DirectX::XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f });
 
+// UVカット  サイズ変更可
+// 引数 : テクスチャID  ポリゴン左上ｘ  ポリゴン左上y  ポリゴンwigth  ポリゴンheight　UV座標左上x  UV座標左上y   UVサイズwigth  UVサイズheight  頂点カラー(デフォルト白)
+void Sprite_Draw(int texid, const DirectX::XMFLOAT2& dPos, const DirectX::XMFLOAT2& dSize, const DirectX::XMFLOAT2& pPos, const DirectX::XMFLOAT2& pSize, const DirectX::XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f });
+
 // UVカット  サイズ変更可 回転可
 // 引数 : テクスチャID  ポリゴン左上ｘ  ポリゴン左上y  ポリゴンwigth  ポリゴンheight　UV座標左上x  UV座標左上y   UVサイズwigth  UVサイズheight  回転量　頂点カラー(デフォルト白)
 void Sprite_Draw(int texid, const DirectX::XMFLOAT2& dPos, const DirectX::XMFLOAT2& dSize, const DirectX::XMUINT2& pPos, const DirectX::XMUINT2& pSize, float angle, const DirectX::XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f });
