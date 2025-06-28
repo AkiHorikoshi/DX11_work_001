@@ -1,12 +1,12 @@
-/*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+/*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃															┃
-┃		スプラトアニメーション描画[sprite_anim.h]			┃
+┃		スプラトアニメーション描画[sprite_anim.h]				┃
 ┃															┃
-┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 ┃							Author: aki hoeikoshi			┃
 ┃							  data: 2025.6.17				┃
 ┃															┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
 
 #ifndef SPRITE_ANIM_H
 #define SPRITE_ANIM_H
@@ -22,7 +22,7 @@ static constexpr int ANIM_PLAY_MAX = 256;
 void SpriteAnimInitialize();
 void SpriteAnimFinalize();
 
-void SpriteAnimUpdate(double elapsed_time, int i, bool stop = false, bool revers = false, bool switcher = false, double speed = 1.0);
+void SpriteAnimUpdate(double elapsed_time, int texnum, bool stop = false, bool revers = false, bool switcher = false, double speed = 1.0);
 void SpriteAnimDraw(int playid, const DirectX::XMFLOAT2& dPosition, const DirectX::XMFLOAT2& dSize);
 
 int SpriteAnimRefisterPattern(int texId, int pattMax, int hPattMax, double pattSeco, const DirectX::XMUINT2& pattPos, const DirectX::XMUINT2& pattSize, bool isLooped);

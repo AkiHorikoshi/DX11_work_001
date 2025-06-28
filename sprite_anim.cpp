@@ -1,12 +1,12 @@
-/*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+/*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃															┃
-┃		スプラトアニメーション描画[sprite_anim.cpp]			┃
+┃		スプラトアニメーション描画[sprite_anim.cpp]				┃
 ┃															┃
-┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 ┃							Author: aki hoeikoshi			┃
 ┃							  data: 2025.6.17				┃
 ┃															┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
 
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -59,51 +59,50 @@ void SpriteAnimFinalize()
 {
 }
 
-void SpriteAnimUpdate(double elpsed_time, int i, bool stop,bool reverse, bool switcher, double speed)
+void SpriteAnimUpdate(double elpsed_time, int texnum, bool stop,bool reverse, bool switcher, double speed)
 {
 	// アニメーションパターン変化
-	if (g_AnimPlay[i].m_PatternId < 0)
+	if (g_AnimPlay[texnum].m_PatternId < 0)
 	{
 		return;
 	}
 
-	if (g_AnimPlay[i].m_Accumulated_time >= g_AnimPattern[i].m_SecondsParPatrern)
+	if (g_AnimPlay[texnum].m_Accumulated_time >= g_AnimPattern[texnum].m_SecondsParPatrern)
 	{
 		// パターンカウントをインクリメント
 		// 1 * 停止判定(0 or 1) * 逆再生判定(-1 or 1)
-		g_AnimPlay[i].m_PatternCount += 1 * SpriteAnimStop(stop) * SpriteAnimPlayBack(reverse);
+		g_AnimPlay[texnum].m_PatternCount += 1 *SpriteAnimStop(stop) * SpriteAnimPlayBack(reverse);
 
 		// 再生パターンを再生し切ったら最初のパターンに戻す
-		if (g_AnimPlay[i].m_PatternCount >= g_AnimPattern[g_AnimPlay[i].m_PatternId].m_PatternMax)
+		if (g_AnimPlay[texnum].m_PatternCount >= g_AnimPattern[g_AnimPlay[texnum].m_PatternId].m_PatternMax)
 		{
-			if (g_AnimPattern[g_AnimPlay[i].m_PatternId].m_IsLooped)
+			if (g_AnimPattern[g_AnimPlay[texnum].m_PatternId].m_IsLooped == true)
 			{
-				g_AnimPlay[i].m_PatternCount = 0;
+				g_AnimPlay[texnum].m_PatternCount = 0;
 			}
 			else
 			{
-				g_AnimPlay[i].m_PatternCount = g_AnimPattern[g_AnimPlay[i].m_PatternId].m_PatternMax - 1;
+				g_AnimPlay[texnum].m_PatternCount = g_AnimPattern[g_AnimPlay[texnum].m_PatternId].m_PatternMax - 1;
 			}
 		}
 		// 逆再生で再生パターンを再生し切ったら最後のパターンに戻す
-		if (reverse == true && g_AnimPlay[i].m_PatternCount <= 0)
+		if (reverse == true && g_AnimPlay[texnum].m_PatternCount <= 0)
 		{
-			if (g_AnimPattern[g_AnimPlay[i].m_PatternId].m_IsLooped)
+			if (g_AnimPattern[g_AnimPlay[texnum].m_PatternId].m_IsLooped == true)
 			{
-				g_AnimPlay[i].m_PatternCount = g_AnimPattern[g_AnimPlay[i].m_PatternId].m_PatternMax - 1;
+				g_AnimPlay[texnum].m_PatternCount = g_AnimPattern[g_AnimPlay[texnum].m_PatternId].m_PatternMax - 1;
 			}
 			else
 			{
-				g_AnimPlay[i].m_PatternCount = 0;
+				g_AnimPlay[texnum].m_PatternCount = 0;
 			}
 		}
 
-		g_AnimPlay[i].m_Accumulated_time -= g_AnimPattern[i].m_SecondsParPatrern;
-
+		g_AnimPlay[texnum].m_Accumulated_time -= g_AnimPattern[texnum].m_SecondsParPatrern;
 	}
 
 	// パターン再生時間調整
-	g_AnimPlay[i].m_Accumulated_time += elpsed_time * SpriteAnimChangeSpeed(switcher, speed);
+	g_AnimPlay[texnum].m_Accumulated_time += elpsed_time * SpriteAnimChangeSpeed(switcher, speed);
 }
 
 void SpriteAnimDraw(int playid, const DirectX::XMFLOAT2& dPosition, const DirectX::XMFLOAT2& dSize)
