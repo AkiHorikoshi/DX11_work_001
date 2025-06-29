@@ -62,10 +62,6 @@ enum BULLETID
 
 enum ANIMID
 {// キャラクター管理番号
-	R_WALK,
-	L_WALK,
-	NEMUI,
-	TRESURE,
 	RUNNER01,
 	RUNNER02,
 	ANIMID_MAX
@@ -102,6 +98,10 @@ struct Character
 	int m_areaid;			// 現在の所在エリア判別ID
 	XMFLOAT2 m_pos;			// ポリゴン左上座標
 	XMFLOAT2 m_size;		// ポリゴンサイズ
+	bool m_stop;			// アニメーション停止フラグ
+	bool m_reverse;			// アニメーション逆再生フラグ
+	bool m_switcher;		// アニメーション倍速フラグ
+	double m_animspeed;		// アニメーション再生速度
 };
 
 
@@ -195,26 +195,6 @@ void GameInitialize()
 	}
 
 
-	/**********************************  ココ素材各種初期化  **************************************/
-	// テクスチャ読み込み
-	for (int i = 0; i < TRESURE + 1 - R_WALK; i++)
-	{
-		g_Chara[i + R_WALK].m_texid = TextureLoad(L"resource/texture/kokosozai.png");
-	}
-
-	// アニメーションパターン設定
-	g_Chara[R_WALK].m_animid  = SpriteAnimRefisterPattern(g_Chara[R_WALK].m_texid, 13, 16, 0.1, { 0     ,  0     }, { 32, 32 }, true);
-	g_Chara[L_WALK].m_animid  = SpriteAnimRefisterPattern(g_Chara[L_WALK].m_texid, 13, 16, 0.3, { 0     , 32 * 1 }, { 32, 32 }, true);
-	g_Chara[NEMUI].m_animid   = SpriteAnimRefisterPattern(g_Chara[NEMUI].m_texid,  15, 16, 0.1, { 0     , 32 * 4 }, { 32, 32 }, true);
-	g_Chara[TRESURE].m_animid = SpriteAnimRefisterPattern(g_Chara[TRESURE].m_texid, 4, 16, 0.1, { 32 * 2, 32 * 5 }, { 32, 32 }, false);
-
-	// 再生対象番号
-	g_Chara[R_WALK].m_pid  = SpriteAnimCreatePlayer(g_Chara[R_WALK].m_animid);
-	g_Chara[L_WALK].m_pid  = SpriteAnimCreatePlayer(g_Chara[L_WALK].m_animid);
-	g_Chara[NEMUI].m_pid   = SpriteAnimCreatePlayer(g_Chara[NEMUI].m_animid);
-	g_Chara[TRESURE].m_pid = SpriteAnimCreatePlayer(g_Chara[TRESURE].m_animid);
-
-
 	/**********************************  ランニングマン初期化  **************************************/
 	g_Chara[RUNNER01].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
 	g_Chara[RUNNER01].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER01].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
@@ -222,7 +202,11 @@ void GameInitialize()
 	g_Chara[RUNNER01].m_areaid = MIDDLE;
 	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER01].m_size   = { 160.0f, 160.0f };
-	g_RunningmanHp = 5.0f;
+	g_Chara[RUNNER01].m_stop   = false;
+	g_Chara[RUNNER01].m_reverse = false;
+	g_Chara[RUNNER01].m_switcher = false;
+	g_Chara[RUNNER01].m_animspeed = 1.0f;
+	g_RunningmanHp = 5;
 
 	g_Chara[RUNNER02].m_texid  = TextureLoad(L"resource/texture/runningman003.png");
 	g_Chara[RUNNER02].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER02].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
@@ -230,6 +214,10 @@ void GameInitialize()
 	g_Chara[RUNNER02].m_areaid = MIDDLE;
 	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER02].m_size   = { 160.0f, 160.0f };
+	g_Chara[RUNNER01].m_stop = false;
+	g_Chara[RUNNER01].m_reverse = false;
+	g_Chara[RUNNER01].m_switcher = false;
+	g_Chara[RUNNER01].m_animspeed = 1.0f;
 }
 
 void GameFinalize()
@@ -424,21 +412,54 @@ void GameUpdata(double elapsed_time)
 		}
 	}
 
+	// RUNNER01 のHPが0になったら終わり
+	if (g_RunningmanHp <= 0)
+	{
+		// 全停止
+		g_RunningmanHp = 0;
+		g_Time = 0.0f;
+		g_Back[BACK_SKY].m_scrollspeed    = 0.0f;
+		g_Back[BACK_GROUND].m_scrollspeed = 0.0f;
+		g_Back[TEXT_UTE].m_scrollspeed    = 0.0f;
+		g_Back[BACK_SUN].m_anglespeed     = 0.0f;
+		g_Chara[RUNNER01].m_stop = true;
+		g_Chara[RUNNER02].m_stop = true;
+		// RUNNER01は小さくして消す。
+		g_Chara[RUNNER01].m_size.x += 32.0f * elapsed_time * -1.0f;
+		g_Chara[RUNNER01].m_size.y += 32.0f * elapsed_time * -1.0f;
+		if (g_Chara[RUNNER01].m_size.x <= 0.0f)
+		{
+			g_Chara[RUNNER01].m_size.x = 0.0f;
+		}
+		if (g_Chara[RUNNER01].m_size.y <= 0.0f)
+		{
+			g_Chara[RUNNER01].m_size.y = 0.0f;
+		}
+		// イテッ も一緒に小さくして消す
+		g_Back[TEXT_ITETU].m_size.x += 256.0f * 0.2f * elapsed_time * -1.0f;
+		g_Back[TEXT_ITETU].m_size.y += 128.0f * 0.2f * elapsed_time * -1.0f;
+		g_Back[TEXT_ITETU].m_pos.y  += 128.0f * 0.2f * elapsed_time;
+		if (g_Back[TEXT_ITETU].m_size.x <= 0.0f)
+		{
+			g_Back[TEXT_ITETU].m_size.x = 0.0f;
+		}
+		if (g_Back[TEXT_ITETU].m_size.y <= 0.0f)
+		{
+			g_Back[TEXT_ITETU].m_size.y = 0.0f;
+		}
+
+	}
 
 	// アニメーション情報の更新
-	for (int i = 0; i < ANIM_PLAY_MAX; i++)
+	for (int i = 0; i < ANIMID_MAX; i++)
 	{
-		if (i == R_WALK)
-		{
-			SpriteAnimUpdate(elapsed_time, i, false, true);
-		}
 		if (i == RUNNER01)
 		{
-			SpriteAnimUpdate(elapsed_time, i, false, false, true, 10.0);
+			SpriteAnimUpdate(elapsed_time, i, g_Chara[RUNNER01].m_stop, g_Chara[RUNNER01].m_reverse, g_Chara[RUNNER01].m_switcher, g_Chara[RUNNER01].m_animspeed);
 		}
 		if (i == RUNNER02)
 		{
-			SpriteAnimUpdate(elapsed_time, i, false, false, true, 5.0);
+			SpriteAnimUpdate(elapsed_time, i, g_Chara[RUNNER02].m_stop, g_Chara[RUNNER02].m_reverse, g_Chara[RUNNER02].m_switcher, g_Chara[RUNNER02].m_animspeed);
 		}
 	}
 }
