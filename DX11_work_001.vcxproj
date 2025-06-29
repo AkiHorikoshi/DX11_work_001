@@ -138,6 +138,8 @@ xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)resource/shader"</Command>
     <ClCompile Include="direct3d.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="game_window.cpp" />
+    <ClCompile Include="keyboard.cpp" />
+    <ClCompile Include="key_logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="sprite.cpp" />
@@ -152,6 +154,8 @@ xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)resource/shader"</Command>
     <ClInclude Include="direct3d.h" />
     <ClInclude Include="game.h" />
     <ClInclude Include="game_window.h" />
+    <ClInclude Include="keyboard.h" />
+    <ClInclude Include="key_logger.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="sprite.h" />
     <ClInclude Include="sprite_anim.h" />

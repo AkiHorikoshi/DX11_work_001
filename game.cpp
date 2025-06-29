@@ -14,6 +14,8 @@
 using namespace DirectX;
 #include "direct3d.h"
 #include "game_window.h"
+#include "keyboard.h"
+#include "key_logger.h"
 #include "game.h"
 #include "texture.h"
 #include "sprite.h"
@@ -27,6 +29,7 @@ enum BACKID
 	BACK_SUN,
 	BACK_GROUND,
 	TEXT_UTE,
+	SIRO,
 	BACK_MAX
 };
 
@@ -36,9 +39,22 @@ enum ANIMID
 	L_WALK,
 	NEMUI,
 	TRESURE,
-	RUNNER,
+	RUNNER01,
+	RUNNER02,
 	ANIMID_MAX
 };
+
+enum AREAID
+{// 現在のエリアがどこか判別する用
+	TOP,
+	MIDDLE,
+	UNDER,
+	AREAID_MAX
+};
+
+constexpr float AREA_POSY_TOP    = 475.0f;
+constexpr float AREA_POSY_MIDDLE = 535.0f;
+constexpr float AREA_POSY_UNDER  = 625.0f;
 
 
 /*===========================    構造体定義     =============================*/
@@ -56,18 +72,19 @@ struct BackGround
 
 struct Character
 {// キャラクター用ステータス
-	int m_texid;
-	int m_animid;
-	int m_pid;
-	XMFLOAT2 m_pos;
-	XMFLOAT2 m_size;
-	float m_angle;
+	int m_texid;			// テクスチャID管理
+	int m_animid;			// アニメーションパターン管理ID
+	int m_pid;				// アニメーションプレイヤー管理ID
+	int m_areaid;			// 現在の所在エリア判別ID
+	XMFLOAT2 m_pos;			// ポリゴン左上座標
+	XMFLOAT2 m_size;		// ポリゴンサイズ
 };
 
 
 /*==========================    グローバル変数     ============================*/
 BackGround g_Back[BACK_MAX]{};
 Character g_Chara[ANIMID_MAX];
+static int g_RunningmanHp{};		// 逃げているランニングマンのHP
 
 
 /*=============================    関数宣言     ===============================*/
@@ -105,6 +122,15 @@ void GameInitialize()
 	g_Back[BACK_GROUND].m_angle = 0.0f;
 	g_Back[BACK_GROUND].m_anglespeed = 0.0f;
 
+	g_Back[SIRO].m_texid = TextureLoad(L"resource/texture/siro.png");
+	g_Back[SIRO].m_pos = { 0.0f, SCREEN_HEIGHT * 0.5f + 128.0f };
+	g_Back[SIRO].m_size = { SCREEN_WIDTH, 2.0f };
+	g_Back[SIRO].m_texcoord = { 0.0f, 0.0f };
+	g_Back[SIRO].m_texsize = { 1.0f, 1.0f };
+	g_Back[SIRO].m_scrollspeed = 0.0f;
+	g_Back[SIRO].m_angle = 0.0f;
+	g_Back[SIRO].m_anglespeed = 0.0f;
+
 	/**********************************  テキスト画像初期化  **************************************/
 	g_Back[TEXT_UTE].m_texid  = TextureLoad(L"resource/texture/text_ute.png");
 	g_Back[TEXT_UTE].m_pos    = { 0.0f, 32.0f };
@@ -137,11 +163,20 @@ void GameInitialize()
 
 
 	/**********************************  ランニングマン初期化  **************************************/
-	g_Chara[RUNNER].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
-	g_Chara[RUNNER].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
-	g_Chara[RUNNER].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER].m_animid);
-	g_Chara[RUNNER].m_pos    = { SCREEN_WIDTH * 0.5f - 128.0f,SCREEN_HEIGHT * 0.5f};
-	g_Chara[RUNNER].m_size   = { 256.0f,256.0f };
+	g_Chara[RUNNER01].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
+	g_Chara[RUNNER01].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER01].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
+	g_Chara[RUNNER01].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER01].m_animid);
+	g_Chara[RUNNER01].m_areaid = UNDER;
+	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,SCREEN_HEIGHT * 0.5f};
+	g_Chara[RUNNER01].m_size   = { 160.0f, 160.0f };
+
+	g_Chara[RUNNER02].m_texid  = TextureLoad(L"resource/texture/runningman003.png");
+	g_Chara[RUNNER02].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER02].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
+	g_Chara[RUNNER02].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER02].m_animid);
+	g_Chara[RUNNER02].m_areaid = MIDDLE;
+	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,SCREEN_HEIGHT * 0.5f};
+	g_Chara[RUNNER02].m_size   = { 160.0f, 160.0f };
+
 }
 
 void GameFinalize()
@@ -177,18 +212,54 @@ void GameUpdata(double elapsed_time)
 
 
 	/**********************************  キャラクター更新  **************************************/
+	// キャラクター移動
+	if (KeyLoggerIsTrigger(KK_W))
+	{
+		g_Chara[RUNNER02].m_areaid += -1;
+	}
+	if (KeyLoggerIsTrigger(KK_S))
+	{
+		g_Chara[RUNNER02].m_areaid += 1;
+	}
+	// 移動先が範囲外になることを阻止
+	if (g_Chara[RUNNER02].m_areaid < TOP)
+	{
+		g_Chara[RUNNER02].m_areaid = TOP;
+	}
+	if (g_Chara[RUNNER02].m_areaid > UNDER)
+	{
+		g_Chara[RUNNER02].m_areaid = UNDER;
+	}
+	// AREAIDに応じたポジションへ移動
+	switch (g_Chara[RUNNER02].m_areaid)
+	{
+	case TOP:
+		g_Chara[RUNNER02].m_pos.y = AREA_POSY_TOP - g_Chara[RUNNER02].m_size.y;
+		break;
+	case MIDDLE:
+		g_Chara[RUNNER02].m_pos.y = AREA_POSY_MIDDLE - g_Chara[RUNNER02].m_size.y;
+		break;
+	case UNDER:
+		g_Chara[RUNNER02].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER02].m_size.y;
+		break;
+	}
+
+	// アニメーション情報の更新
 	for (int i = 0; i < ANIM_PLAY_MAX; i++)
 	{
 		if (i == R_WALK)
 		{
 			SpriteAnimUpdate(elapsed_time, i, false, true);
 		}
-		if (i == RUNNER)
+		if (i == RUNNER01)
 		{
 			SpriteAnimUpdate(elapsed_time, i, false, false, true, 10.0);
 		}
+		if (i == RUNNER02)
+		{
+			SpriteAnimUpdate(elapsed_time, i, false, false, true, 5.0);
+		}
 	}
-
 }
 
 void GameDraw()
@@ -198,7 +269,11 @@ void GameDraw()
 	Sprite_Draw(g_Back[BACK_GROUND].m_texid, g_Back[BACK_GROUND].m_pos, g_Back[BACK_GROUND].m_size, g_Back[BACK_GROUND].m_texcoord, g_Back[BACK_GROUND].m_texsize);
 	Sprite_Draw(g_Back[BACK_SUN].m_texid   , g_Back[BACK_SUN].m_pos   , g_Back[BACK_SUN].m_size   , { 0, 0 }, { 296, 300 }        , g_Back[BACK_SUN].m_angle);
 	Sprite_Draw(g_Back[TEXT_UTE].m_texid   , g_Back[TEXT_UTE].m_pos   , g_Back[TEXT_UTE].m_size   , g_Back[TEXT_UTE].m_texcoord   , g_Back[TEXT_UTE].m_texsize);
+	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_TOP    }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_MIDDLE }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_UNDER  }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
 
 	/* キャラクター表示 */
-	SpriteAnimDraw(g_Chara[RUNNER].m_pid, g_Chara[RUNNER].m_pos, g_Chara[RUNNER].m_size);
+	SpriteAnimDraw(g_Chara[RUNNER01].m_pid, g_Chara[RUNNER01].m_pos, g_Chara[RUNNER01].m_size);
+	SpriteAnimDraw(g_Chara[RUNNER02].m_pid, g_Chara[RUNNER02].m_pos, g_Chara[RUNNER02].m_size);
 }

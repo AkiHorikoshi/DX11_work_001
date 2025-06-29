@@ -10,6 +10,7 @@
 
 #include "game_window.h"
 #include <algorithm>
+#include "keyboard.h"
 
 
 /*
@@ -93,6 +94,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			SendMessage(hWnd, WM_CLOSE, 0, 0);
 		}
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+         Keyboard_ProcessMessage(message, wParam, lParam);
+         break;
+
 		break;
 		//======================================================================================
 	case WM_CLOSE:

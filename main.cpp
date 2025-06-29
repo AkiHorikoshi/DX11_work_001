@@ -13,6 +13,7 @@
 #include "game.h"
 #include <DirectXmath.h>
 using namespace DirectX;
+#include "key_logger.h"
 
 
 /* メイン */
@@ -26,6 +27,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	/*===============================　　初期化　　==================================*/
 	SystemTimer_Initialize();
 	Direct3D_Initialize(hWnd);
+	KeyLoggerInitialize();
+
 	Shader_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
 	GameInitialize();
 
@@ -74,7 +77,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 			if (elapsed_time >= (1.0 / 60.0))
 			{
 				exec_last_time = current_time;
-
+				KeyLoggerUpdate();
 				GameUpdata(elapsed_time);
 
 				// ゲームの描画
@@ -83,7 +86,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 				Sprite_Begin();
 
 				GameDraw();
-
 
 #ifdef _DEBUG
 				std::stringstream ss;
