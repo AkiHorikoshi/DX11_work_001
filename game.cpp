@@ -30,8 +30,28 @@ enum BACKID
 	BACK_SUN,
 	BACK_GROUND,
 	TEXT_UTE,
-	SIRO,
+	LINE,
 	BACKID_MAX
+};
+
+enum AREAID
+{// 現在のエリアがどこか判別する用
+	TOP,
+	MIDDLE,
+	UNDER,
+	AREAID_MAX
+};
+
+constexpr float AREA_POSY_TOP = 475.0f;			// 上層エリアの下座標
+constexpr float AREA_POSY_MIDDLE = 535.0f;			// 中層エリアの下座標
+constexpr float AREA_POSY_UNDER = 625.0f;			// 下層エリアの下座標
+
+enum BULLETID
+{
+	BULLET01,
+	BULLET02,
+	BULLET03,
+	BULLETID_MAX
 };
 
 enum ANIMID
@@ -45,25 +65,6 @@ enum ANIMID
 	ANIMID_MAX
 };
 
-enum AREAID
-{// 現在のエリアがどこか判別する用
-	TOP,
-	MIDDLE,
-	UNDER,
-	AREAID_MAX
-};
-
-constexpr float AREA_POSY_TOP    = 475.0f;			// 上層エリアの下座標
-constexpr float AREA_POSY_MIDDLE = 535.0f;			// 中層エリアの下座標
-constexpr float AREA_POSY_UNDER  = 625.0f;			// 下層エリアの下座標
-
-enum BULLETID
-{
-	BULLET01,
-	BULLET02,
-	BULLET03,
-	BULLETID_MAX
-};
 
 /*===========================    構造体定義     =============================*/
 struct BackGround
@@ -78,6 +79,15 @@ struct BackGround
 	float m_anglespeed;		// 回転速度
 };
 
+struct Bullet
+{// キャラクター用ステータス
+	bool m_use;				// 現在発射されているか確認（画面内＞true , 画面外＞false）（ヒットしたらfalseにする）
+	int m_areaid;			// 現在の所在エリア判別ID
+	XMFLOAT2 m_pos;			// ポリゴン左上座標（m_use == false のときは画面外待機）
+	XMFLOAT2 m_size;		// ポリゴンサイズ
+	float m_speed;			// 弾丸速度
+};
+
 struct Character
 {// キャラクター用ステータス
 	int m_texid;			// テクスチャID管理
@@ -90,9 +100,12 @@ struct Character
 
 
 /*==========================    グローバル変数     ============================*/
-static float g_Time{};				// 更新処理が行われた時間？フレーム回数？
-static float g_ActionTime{};		// RUNNER01 が動いた時の時間？フレーム回数？
+static float g_Time{};				// 更新処理が行われた時間
+static float g_MovedTime{};			// RUNNER01 が動いた時の時間
+static float g_ShotTime{};			// RUNNER02 が弾丸を撃った時間
 BackGround g_Back[BACKID_MAX]{};
+int g_BulletTexid;					// 弾丸テクスチャID管理
+Bullet g_Bullet[BULLETID_MAX];
 Character g_Chara[ANIMID_MAX];
 static int g_RunningmanHp{};		// 逃げているランニングマンのHP
 
@@ -132,14 +145,14 @@ void GameInitialize()
 	g_Back[BACK_GROUND].m_angle = 0.0f;
 	g_Back[BACK_GROUND].m_anglespeed = 0.0f;
 
-	g_Back[SIRO].m_texid = TextureLoad(L"resource/texture/siro.png");
-	g_Back[SIRO].m_pos = { 0.0f, SCREEN_HEIGHT * 0.5f + 128.0f };
-	g_Back[SIRO].m_size = { SCREEN_WIDTH, 2.0f };
-	g_Back[SIRO].m_texcoord = { 0.0f, 0.0f };
-	g_Back[SIRO].m_texsize = { 1.0f, 1.0f };
-	g_Back[SIRO].m_scrollspeed = 0.0f;
-	g_Back[SIRO].m_angle = 0.0f;
-	g_Back[SIRO].m_anglespeed = 0.0f;
+	g_Back[LINE].m_texid = TextureLoad(L"resource/texture/siro.png");
+	g_Back[LINE].m_pos = { 0.0f, SCREEN_HEIGHT * 0.5f + 128.0f };
+	g_Back[LINE].m_size = { SCREEN_WIDTH, 2.0f };
+	g_Back[LINE].m_texcoord = { 0.0f, 0.0f };
+	g_Back[LINE].m_texsize = { 1.0f, 1.0f };
+	g_Back[LINE].m_scrollspeed = 0.0f;
+	g_Back[LINE].m_angle = 0.0f;
+	g_Back[LINE].m_anglespeed = 0.0f;
 
 	/**********************************  テキスト画像初期化  **************************************/
 	g_Back[TEXT_UTE].m_texid  = TextureLoad(L"resource/texture/text_ute.png");
@@ -150,6 +163,18 @@ void GameInitialize()
 	g_Back[TEXT_UTE].m_scrollspeed = -0.8f;
 	g_Back[TEXT_UTE].m_angle = 0.0f;
 	g_Back[TEXT_UTE].m_anglespeed = 0.0f;
+
+
+	/**********************************  弾丸初期化  **************************************/
+	g_BulletTexid = TextureLoad(L"resource/texture/tama.png");
+	for (int i = 0; i < BULLETID_MAX; i++)
+	{
+		g_Bullet[i].m_use    = false;
+		g_Bullet[i].m_areaid = TOP;
+		g_Bullet[i].m_pos    = { SCREEN_WIDTH + 512.0f, AREA_POSY_TOP - 48.0f };
+		g_Bullet[i].m_size   = { 48.0f, 48.0f };
+		g_Bullet[i].m_speed  = -200.0f;
+	}
 
 
 	/**********************************  ココ素材各種初期化  **************************************/
@@ -176,15 +201,15 @@ void GameInitialize()
 	g_Chara[RUNNER01].m_texid  = TextureLoad(L"resource/texture/runningman001.png");
 	g_Chara[RUNNER01].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER01].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
 	g_Chara[RUNNER01].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER01].m_animid);
-	g_Chara[RUNNER01].m_areaid = UNDER;
-	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,SCREEN_HEIGHT * 0.5f};
+	g_Chara[RUNNER01].m_areaid = MIDDLE;
+	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER01].m_size   = { 160.0f, 160.0f };
 
 	g_Chara[RUNNER02].m_texid  = TextureLoad(L"resource/texture/runningman003.png");
 	g_Chara[RUNNER02].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER02].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
 	g_Chara[RUNNER02].m_pid    = SpriteAnimCreatePlayer(g_Chara[RUNNER02].m_animid);
 	g_Chara[RUNNER02].m_areaid = MIDDLE;
-	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,SCREEN_HEIGHT * 0.5f};
+	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER02].m_size   = { 160.0f, 160.0f };
 }
 
@@ -220,14 +245,32 @@ void GameUpdata(double elapsed_time)
 	g_Back[BACK_SUN].m_angle += g_Back[BACK_SUN].m_anglespeed * (float)elapsed_time;
 
 
+	/**********************************     弾丸更新    **************************************/
+	for (int i = 0; i < BULLETID_MAX; i++)
+	{
+		if (g_Bullet[i].m_use == false)
+		{
+			g_Bullet[i].m_areaid = TOP;
+			g_Bullet[i].m_pos = { SCREEN_WIDTH + 512.0f, AREA_POSY_TOP - 48.0f };
+		}
+		else
+		{
+			g_Bullet[i].m_pos.x += g_Bullet[i].m_speed * elapsed_time;
+			if (g_Bullet[i].m_pos.x <= 0 - g_Bullet[i].m_size.x)
+			{
+				g_Bullet[i].m_use = false;
+			}
+		}
+	}
+
 	/**********************************  キャラクター更新  **************************************/
 	// RUNNER01 移動　（自動）
 	g_Time += 1.0 * elapsed_time;
 	// 前回の移動から2秒たったら移動
-	if (g_Time - g_ActionTime >= 2.0f)
+	if (g_Time - g_MovedTime >= 2.0f)
 	{
 		// 移動した時間を保存
-		g_ActionTime = g_Time;
+		g_MovedTime = g_Time;
 
 		// 乱数で次の移動場所決定
 		srand((unsigned)g_Time);
@@ -300,6 +343,30 @@ void GameUpdata(double elapsed_time)
 		break;
 	}
 
+	// RUNNER02 弾丸発射
+	if (KeyLoggerIsTrigger(KK_SPACE) && (g_Time - g_ShotTime >= 0.5f))
+	{
+		for (int i = 0; i < BULLETID_MAX; i++)
+		{
+			// 使われていない弾丸を見つける
+			if (g_Bullet[i].m_use == true)
+			{
+				continue;
+			}
+			else
+			{
+				// 弾丸を撃った時間を保存
+				g_ShotTime = g_Time;
+				// 使用中に変更
+				g_Bullet[i].m_use = true;
+				// 高さを発射位置に合わせる
+				g_Bullet[i].m_areaid = g_Chara[RUNNER02].m_areaid;
+				g_Bullet[i].m_pos.x  = g_Chara[RUNNER02].m_pos.x;
+				break;
+			}
+		}
+	}
+
 
 	// アニメーション情報の更新
 	for (int i = 0; i < ANIM_PLAY_MAX; i++)
@@ -326,11 +393,17 @@ void GameDraw()
 	Sprite_Draw(g_Back[BACK_GROUND].m_texid, g_Back[BACK_GROUND].m_pos, g_Back[BACK_GROUND].m_size, g_Back[BACK_GROUND].m_texcoord, g_Back[BACK_GROUND].m_texsize);
 	Sprite_Draw(g_Back[BACK_SUN].m_texid   , g_Back[BACK_SUN].m_pos   , g_Back[BACK_SUN].m_size   , { 0, 0 }, { 296, 300 }        , g_Back[BACK_SUN].m_angle);
 	Sprite_Draw(g_Back[TEXT_UTE].m_texid   , g_Back[TEXT_UTE].m_pos   , g_Back[TEXT_UTE].m_size   , g_Back[TEXT_UTE].m_texcoord   , g_Back[TEXT_UTE].m_texsize);
-	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_TOP    }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
-	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_MIDDLE }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
-	Sprite_Draw(g_Back[SIRO].m_texid, { g_Back[SIRO].m_pos.x, AREA_POSY_UNDER  }, g_Back[SIRO].m_size, g_Back[SIRO].m_texcoord, g_Back[SIRO].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_TOP    }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_MIDDLE }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_UNDER  }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+
+	/* 弾丸表示 */
+	Sprite_Draw(g_BulletTexid, g_Bullet[BULLET01].m_pos, g_Bullet[BULLET01].m_size);
+	Sprite_Draw(g_BulletTexid, g_Bullet[BULLET02].m_pos, g_Bullet[BULLET02].m_size);
+	Sprite_Draw(g_BulletTexid, g_Bullet[BULLET03].m_pos, g_Bullet[BULLET03].m_size);
 
 	/* キャラクター表示 */
 	SpriteAnimDraw(g_Chara[RUNNER01].m_pid, g_Chara[RUNNER01].m_pos, g_Chara[RUNNER01].m_size);
 	SpriteAnimDraw(g_Chara[RUNNER02].m_pid, g_Chara[RUNNER02].m_pos, g_Chara[RUNNER02].m_size);
+
 }
