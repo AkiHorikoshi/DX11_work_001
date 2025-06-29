@@ -47,9 +47,12 @@ enum AREAID
 };
 
 
-constexpr float AREA_POSY_TOP = 475.0f;			// 上層エリアの下座標
+constexpr float AREA_POSY_TOP    = 475.0f;			// 上層エリアの下座標
 constexpr float AREA_POSY_MIDDLE = 535.0f;			// 中層エリアの下座標
-constexpr float AREA_POSY_UNDER = 625.0f;			// 下層エリアの下座標
+constexpr float AREA_POSY_UNDER  = 625.0f;			// 下層エリアの下座標
+constexpr float AREA_SIZERATIO_TOP    = 0.444f;		// 上層エリアのサイズ比
+constexpr float AREA_SIZERATIO_MIDDLE = 0.667f;		// 中層エリアのサイズ比
+constexpr float AREA_SIZERATIO_UNDER  = 1.0f;		// 下層エリアのサイズ比
 
 enum BULLETID
 {
@@ -87,6 +90,7 @@ struct Bullet
 	int m_areaid;			// 現在の所在エリア判別ID
 	XMFLOAT2 m_pos;			// ポリゴン左上座標（m_use == false のときは画面外待機）
 	XMFLOAT2 m_size;		// ポリゴンサイズ
+	XMFLOAT2 m_defaltsize;	// デフォルトポリゴンサイズ
 	float m_speed;			// 弾丸速度
 };
 
@@ -98,6 +102,7 @@ struct Character
 	int m_areaid;			// 現在の所在エリア判別ID
 	XMFLOAT2 m_pos;			// ポリゴン左上座標
 	XMFLOAT2 m_size;		// ポリゴンサイズ
+	XMFLOAT2 m_defaltsize;	// デフォルトポリゴンサイズ
 	bool m_stop;			// アニメーション停止フラグ
 	bool m_reverse;			// アニメーション逆再生フラグ
 	bool m_switcher;		// アニメーション倍速フラグ
@@ -191,6 +196,7 @@ void GameInitialize()
 		g_Bullet[i].m_areaid = TOP;
 		g_Bullet[i].m_pos    = { SCREEN_WIDTH + 512.0f, AREA_POSY_TOP - 48.0f };
 		g_Bullet[i].m_size   = { 48.0f, 48.0f };
+		g_Bullet[i].m_defaltsize = { 48.0f, 48.0f };
 		g_Bullet[i].m_speed  = -200.0f;
 	}
 
@@ -202,6 +208,7 @@ void GameInitialize()
 	g_Chara[RUNNER01].m_areaid = MIDDLE;
 	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER01].m_size   = { 160.0f, 160.0f };
+	g_Chara[RUNNER01].m_defaltsize = { 160.0f, 160.0f };
 	g_Chara[RUNNER01].m_stop   = false;
 	g_Chara[RUNNER01].m_reverse = false;
 	g_Chara[RUNNER01].m_switcher = false;
@@ -214,6 +221,7 @@ void GameInitialize()
 	g_Chara[RUNNER02].m_areaid = MIDDLE;
 	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER02].m_size   = { 160.0f, 160.0f };
+	g_Chara[RUNNER02].m_defaltsize = { 160.0f, 160.0f };
 	g_Chara[RUNNER01].m_stop = false;
 	g_Chara[RUNNER01].m_reverse = false;
 	g_Chara[RUNNER01].m_switcher = false;
@@ -300,12 +308,18 @@ void GameUpdata(double elapsed_time)
 		switch (g_Chara[RUNNER01].m_areaid)
 		{
 		case TOP:
+			g_Chara[RUNNER01].m_size.x = g_Chara[RUNNER01].m_defaltsize.x * AREA_SIZERATIO_TOP;
+			g_Chara[RUNNER01].m_size.y = g_Chara[RUNNER01].m_defaltsize.y * AREA_SIZERATIO_TOP;
 			g_Chara[RUNNER01].m_pos.y = AREA_POSY_TOP - g_Chara[RUNNER01].m_size.y;
 			break;
 		case MIDDLE:
+			g_Chara[RUNNER01].m_size.x = g_Chara[RUNNER01].m_defaltsize.x * AREA_SIZERATIO_MIDDLE;
+			g_Chara[RUNNER01].m_size.y = g_Chara[RUNNER01].m_defaltsize.y * AREA_SIZERATIO_MIDDLE;
 			g_Chara[RUNNER01].m_pos.y = AREA_POSY_MIDDLE - g_Chara[RUNNER01].m_size.y;
 			break;
 		case UNDER:
+			g_Chara[RUNNER01].m_size.x = g_Chara[RUNNER01].m_defaltsize.x * AREA_SIZERATIO_UNDER;
+			g_Chara[RUNNER01].m_size.y = g_Chara[RUNNER01].m_defaltsize.y * AREA_SIZERATIO_UNDER;
 			g_Chara[RUNNER01].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER01].m_size.y;
 			break;
 		}
@@ -347,12 +361,18 @@ void GameUpdata(double elapsed_time)
 	switch (g_Chara[RUNNER02].m_areaid)
 	{
 	case TOP:
+		g_Chara[RUNNER02].m_size.x = g_Chara[RUNNER02].m_defaltsize.x * AREA_SIZERATIO_TOP;
+		g_Chara[RUNNER02].m_size.y = g_Chara[RUNNER02].m_defaltsize.y * AREA_SIZERATIO_TOP;
 		g_Chara[RUNNER02].m_pos.y = AREA_POSY_TOP - g_Chara[RUNNER02].m_size.y;
 		break;
 	case MIDDLE:
+		g_Chara[RUNNER02].m_size.x = g_Chara[RUNNER02].m_defaltsize.x * AREA_SIZERATIO_MIDDLE;
+		g_Chara[RUNNER02].m_size.y = g_Chara[RUNNER02].m_defaltsize.y * AREA_SIZERATIO_MIDDLE;
 		g_Chara[RUNNER02].m_pos.y = AREA_POSY_MIDDLE - g_Chara[RUNNER02].m_size.y;
 		break;
 	case UNDER:
+		g_Chara[RUNNER02].m_size.x = g_Chara[RUNNER02].m_defaltsize.x * AREA_SIZERATIO_UNDER;
+		g_Chara[RUNNER02].m_size.y = g_Chara[RUNNER02].m_defaltsize.y * AREA_SIZERATIO_UNDER;
 		g_Chara[RUNNER02].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER02].m_size.y;
 		break;
 	}
@@ -395,12 +415,18 @@ void GameUpdata(double elapsed_time)
 			switch (g_Bullet[i].m_areaid)
 			{
 			case TOP:
+				g_Bullet[i].m_size.x =g_Bullet[i].m_defaltsize.x * AREA_SIZERATIO_TOP;
+				g_Bullet[i].m_size.y =g_Bullet[i].m_defaltsize.y * AREA_SIZERATIO_TOP;
 				g_Bullet[i].m_pos.y = AREA_POSY_TOP - g_Bullet[i].m_size.y;
 				break;
 			case MIDDLE:
+				g_Bullet[i].m_size.x = g_Bullet[i].m_defaltsize.x * AREA_SIZERATIO_MIDDLE;
+				g_Bullet[i].m_size.y = g_Bullet[i].m_defaltsize.y * AREA_SIZERATIO_MIDDLE;
 				g_Bullet[i].m_pos.y = AREA_POSY_MIDDLE - g_Bullet[i].m_size.y;
 				break;
 			case UNDER:
+				g_Bullet[i].m_size.x = g_Bullet[i].m_defaltsize.x * AREA_SIZERATIO_UNDER;
+				g_Bullet[i].m_size.y = g_Bullet[i].m_defaltsize.y * AREA_SIZERATIO_UNDER;
 				g_Bullet[i].m_pos.y = AREA_POSY_UNDER - g_Bullet[i].m_size.y;
 				break;
 			}
