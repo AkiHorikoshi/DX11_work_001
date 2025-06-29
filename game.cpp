@@ -14,6 +14,7 @@
 using namespace DirectX;
 #include "direct3d.h"
 #include "game_window.h"
+#include <stdlib.h>				// 乱数用
 #include "keyboard.h"
 #include "key_logger.h"
 #include "game.h"
@@ -30,7 +31,7 @@ enum BACKID
 	BACK_GROUND,
 	TEXT_UTE,
 	SIRO,
-	BACK_MAX
+	BACKID_MAX
 };
 
 enum ANIMID
@@ -52,10 +53,17 @@ enum AREAID
 	AREAID_MAX
 };
 
-constexpr float AREA_POSY_TOP    = 475.0f;
-constexpr float AREA_POSY_MIDDLE = 535.0f;
-constexpr float AREA_POSY_UNDER  = 625.0f;
+constexpr float AREA_POSY_TOP    = 475.0f;			// 上層エリアの下座標
+constexpr float AREA_POSY_MIDDLE = 535.0f;			// 中層エリアの下座標
+constexpr float AREA_POSY_UNDER  = 625.0f;			// 下層エリアの下座標
 
+enum BULLETID
+{
+	BULLET01,
+	BULLET02,
+	BULLET03,
+	BULLETID_MAX
+};
 
 /*===========================    構造体定義     =============================*/
 struct BackGround
@@ -82,7 +90,9 @@ struct Character
 
 
 /*==========================    グローバル変数     ============================*/
-BackGround g_Back[BACK_MAX]{};
+static float g_Time{};				// 更新処理が行われた時間？フレーム回数？
+static float g_ActionTime{};		// RUNNER01 が動いた時の時間？フレーム回数？
+BackGround g_Back[BACKID_MAX]{};
 Character g_Chara[ANIMID_MAX];
 static int g_RunningmanHp{};		// 逃げているランニングマンのHP
 
@@ -176,7 +186,6 @@ void GameInitialize()
 	g_Chara[RUNNER02].m_areaid = MIDDLE;
 	g_Chara[RUNNER02].m_pos    = { SCREEN_WIDTH * 0.5f + 256.0f,SCREEN_HEIGHT * 0.5f};
 	g_Chara[RUNNER02].m_size   = { 160.0f, 160.0f };
-
 }
 
 void GameFinalize()
@@ -186,7 +195,7 @@ void GameFinalize()
 void GameUpdata(double elapsed_time)
 {
 	/**********************************    画像更新    **************************************/
-	/* UVスクロール  Uの値を加算 */
+	/* UVスクロール 横スクロール */
 	g_Back[BACK_SKY].m_texcoord.x += g_Back[BACK_SKY].m_scrollspeed * elapsed_time;
 	g_Back[BACK_SKY].m_texcoord.x = fmodf(g_Back[BACK_SKY].m_texcoord.x, g_Back[BACK_SKY].m_texsize.x);
 	if (g_Back[BACK_SKY].m_texcoord.x < 0)
@@ -212,7 +221,54 @@ void GameUpdata(double elapsed_time)
 
 
 	/**********************************  キャラクター更新  **************************************/
-	// キャラクター移動
+	// RUNNER01 移動　（自動）
+	g_Time += 1.0 * elapsed_time;
+	// 前回の移動から2秒たったら移動
+	if (g_Time - g_ActionTime >= 2.0f)
+	{
+		// 移動した時間を保存
+		g_ActionTime = g_Time;
+
+		// 乱数で次の移動場所決定
+		srand((unsigned)g_Time);
+		int updown = rand() % 3;
+		switch (updown)
+		{
+		case 0:
+			g_Chara[RUNNER01].m_areaid += -1;
+			break;
+		case 1:
+			g_Chara[RUNNER01].m_areaid += 0;
+			break;
+		case 2:
+			g_Chara[RUNNER01].m_areaid += 1;
+			break;
+		}
+		// 移動先が範囲外になることを阻止
+		if (g_Chara[RUNNER01].m_areaid < TOP)
+		{
+			g_Chara[RUNNER01].m_areaid = TOP;
+		}
+		if (g_Chara[RUNNER01].m_areaid > UNDER)
+		{
+			g_Chara[RUNNER01].m_areaid = UNDER;
+		}
+		// AREAIDに応じたポジションへ移動
+		switch (g_Chara[RUNNER01].m_areaid)
+		{
+		case TOP:
+			g_Chara[RUNNER01].m_pos.y = AREA_POSY_TOP - g_Chara[RUNNER01].m_size.y;
+			break;
+		case MIDDLE:
+			g_Chara[RUNNER01].m_pos.y = AREA_POSY_MIDDLE - g_Chara[RUNNER01].m_size.y;
+			break;
+		case UNDER:
+			g_Chara[RUNNER01].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER01].m_size.y;
+			break;
+		}
+	}
+
+	// RUNNER02 移動　（手動）
 	if (KeyLoggerIsTrigger(KK_W))
 	{
 		g_Chara[RUNNER02].m_areaid += -1;
@@ -243,6 +299,7 @@ void GameUpdata(double elapsed_time)
 		g_Chara[RUNNER02].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER02].m_size.y;
 		break;
 	}
+
 
 	// アニメーション情報の更新
 	for (int i = 0; i < ANIM_PLAY_MAX; i++)
