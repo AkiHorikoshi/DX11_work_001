@@ -30,9 +30,13 @@ enum BACKID
 	BACK_SUN,
 	BACK_GROUND,
 	TEXT_UTE,
+	TEXT_ITETU,
 	LINE,
 	BACKID_MAX
 };
+
+constexpr float DISPTIME_ITETU = 0.3f;
+
 
 enum AREAID
 {// 現在のエリアがどこか判別する用
@@ -41,6 +45,7 @@ enum AREAID
 	UNDER,
 	AREAID_MAX
 };
+
 
 constexpr float AREA_POSY_TOP = 475.0f;			// 上層エリアの下座標
 constexpr float AREA_POSY_MIDDLE = 535.0f;			// 中層エリアの下座標
@@ -53,6 +58,7 @@ enum BULLETID
 	BULLET03,
 	BULLETID_MAX
 };
+
 
 enum ANIMID
 {// キャラクター管理番号
@@ -100,14 +106,16 @@ struct Character
 
 
 /*==========================    グローバル変数     ============================*/
-static float g_Time{};				// 更新処理が行われた時間
-static float g_MovedTime{};			// RUNNER01 が動いた時の時間
-static float g_ShotTime{};			// RUNNER02 が弾丸を撃った時間
+static float g_Time{};					// 更新処理が行われた時間
+static float g_MovedTime{};				// RUNNER01 が動いた時の時間
+static float g_ShotTime{};				// RUNNER02 が弾丸を撃った時間
 BackGround g_Back[BACKID_MAX]{};
-int g_BulletTexid;					// 弾丸テクスチャID管理
+static bool g_BackDispTextItetu{};		// テキスト　イテッを表示しているかチェック
+static float g_BackDispTimeTextItetu{};	// テキスト　イテッを表示する時間
 Bullet g_Bullet[BULLETID_MAX];
+int g_BulletTexid;						// 弾丸テクスチャID管理
 Character g_Chara[ANIMID_MAX];
-static int g_RunningmanHp{};		// 逃げているランニングマンのHP
+static int g_RunningmanHp{};			// 逃げているランニングマンのHP
 
 
 /*=============================    関数宣言     ===============================*/
@@ -157,13 +165,23 @@ void GameInitialize()
 	/**********************************  テキスト画像初期化  **************************************/
 	g_Back[TEXT_UTE].m_texid  = TextureLoad(L"resource/texture/text_ute.png");
 	g_Back[TEXT_UTE].m_pos    = { 0.0f, 32.0f };
-	g_Back[TEXT_UTE].m_size   = { SCREEN_WIDTH, 128 };
+	g_Back[TEXT_UTE].m_size   = { SCREEN_WIDTH, 128.0f };
 	g_Back[TEXT_UTE].m_texcoord = { 0.0f, 0.0f };
 	g_Back[TEXT_UTE].m_texsize  = { 2.0f, 1.0 };
 	g_Back[TEXT_UTE].m_scrollspeed = -0.8f;
 	g_Back[TEXT_UTE].m_angle = 0.0f;
 	g_Back[TEXT_UTE].m_anglespeed = 0.0f;
 
+	g_Back[TEXT_ITETU].m_texid = TextureLoad(L"resource/texture/text_itetu.png");
+	g_Back[TEXT_ITETU].m_pos = { 0.0f, 0.0f };
+	g_Back[TEXT_ITETU].m_size = { 256.0f, 128.0f };
+	g_Back[TEXT_ITETU].m_texcoord = { 0.0f, 0.0f };
+	g_Back[TEXT_ITETU].m_texsize = { 1.0f, 1.0 };
+	g_Back[TEXT_ITETU].m_scrollspeed = 0.0f;
+	g_Back[TEXT_ITETU].m_angle = 0.0f;
+	g_Back[TEXT_ITETU].m_anglespeed = 0.0f;
+	g_BackDispTextItetu = false;
+	g_BackDispTimeTextItetu = DISPTIME_ITETU;
 
 	/**********************************  弾丸初期化  **************************************/
 	g_BulletTexid = TextureLoad(L"resource/texture/tama.png");
@@ -204,6 +222,7 @@ void GameInitialize()
 	g_Chara[RUNNER01].m_areaid = MIDDLE;
 	g_Chara[RUNNER01].m_pos    = { SCREEN_WIDTH * 0.5f -256.0f,AREA_POSY_MIDDLE - 160.0f };
 	g_Chara[RUNNER01].m_size   = { 160.0f, 160.0f };
+	g_RunningmanHp = 5.0f;
 
 	g_Chara[RUNNER02].m_texid  = TextureLoad(L"resource/texture/runningman003.png");
 	g_Chara[RUNNER02].m_animid = SpriteAnimRefisterPattern(g_Chara[RUNNER02].m_texid, 10, 5, 0.1, { 0,  0 }, { 700 / 5, 400 / 2 }, true);
@@ -244,24 +263,17 @@ void GameUpdata(double elapsed_time)
 
 	g_Back[BACK_SUN].m_angle += g_Back[BACK_SUN].m_anglespeed * (float)elapsed_time;
 
-
-	/**********************************     弾丸更新    **************************************/
-	for (int i = 0; i < BULLETID_MAX; i++)
+	// テキスト イテッ　更新
+	if (g_BackDispTextItetu == true)
 	{
-		if (g_Bullet[i].m_use == false)
+		g_BackDispTimeTextItetu += g_Time * elapsed_time * -1.0f;
+		if (g_BackDispTimeTextItetu <= 0.0f)
 		{
-			g_Bullet[i].m_areaid = TOP;
-			g_Bullet[i].m_pos = { SCREEN_WIDTH + 512.0f, AREA_POSY_TOP - 48.0f };
-		}
-		else
-		{
-			g_Bullet[i].m_pos.x += g_Bullet[i].m_speed * elapsed_time;
-			if (g_Bullet[i].m_pos.x <= 0 - g_Bullet[i].m_size.x)
-			{
-				g_Bullet[i].m_use = false;
-			}
+			g_BackDispTextItetu = false;
+			g_BackDispTimeTextItetu = DISPTIME_ITETU;
 		}
 	}
+
 
 	/**********************************  キャラクター更新  **************************************/
 	// RUNNER01 移動　（自動）
@@ -308,6 +320,20 @@ void GameUpdata(double elapsed_time)
 		case UNDER:
 			g_Chara[RUNNER01].m_pos.y = AREA_POSY_UNDER - g_Chara[RUNNER01].m_size.y;
 			break;
+		}
+	}
+
+	// 弾丸とのあたり判定
+	for (int i = 0; i < BULLETID_MAX; i++)
+	{
+		if (g_Bullet[i].m_use == true && (g_Chara[RUNNER01].m_areaid == g_Bullet[i].m_areaid) 
+			&& (g_Chara[RUNNER01].m_pos.x + g_Chara[RUNNER01].m_size.x - g_Bullet[i].m_pos.x > 0.0f) 
+			&& (g_Chara[RUNNER01].m_pos.x - g_Bullet[i].m_pos.x + g_Bullet[i].m_size.x < 0.0f))
+		{
+			g_Bullet[i].m_use = false;
+			g_RunningmanHp += -1;
+			g_BackDispTextItetu = true;
+			g_Back[TEXT_ITETU].m_pos = { g_Chara[RUNNER01].m_pos.x, g_Chara[RUNNER01].m_pos.y - g_Back[TEXT_ITETU].m_size.y };
 		}
 	}
 
@@ -368,6 +394,37 @@ void GameUpdata(double elapsed_time)
 	}
 
 
+	/**********************************     弾丸更新    **************************************/
+	for (int i = 0; i < BULLETID_MAX; i++)
+	{
+		if (g_Bullet[i].m_use == false)
+		{
+			g_Bullet[i].m_areaid = TOP;
+			g_Bullet[i].m_pos = { SCREEN_WIDTH + 512.0f, AREA_POSY_TOP - 48.0f };
+		}
+		else
+		{
+			switch (g_Bullet[i].m_areaid)
+			{
+			case TOP:
+				g_Bullet[i].m_pos.y = AREA_POSY_TOP - g_Bullet[i].m_size.y;
+				break;
+			case MIDDLE:
+				g_Bullet[i].m_pos.y = AREA_POSY_MIDDLE - g_Bullet[i].m_size.y;
+				break;
+			case UNDER:
+				g_Bullet[i].m_pos.y = AREA_POSY_UNDER - g_Bullet[i].m_size.y;
+				break;
+			}
+			g_Bullet[i].m_pos.x += g_Bullet[i].m_speed * elapsed_time;
+			if (g_Bullet[i].m_pos.x <= 0 - g_Bullet[i].m_size.x)
+			{
+				g_Bullet[i].m_use = false;
+			}
+		}
+	}
+
+
 	// アニメーション情報の更新
 	for (int i = 0; i < ANIM_PLAY_MAX; i++)
 	{
@@ -396,6 +453,10 @@ void GameDraw()
 	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_TOP    }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
 	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_MIDDLE }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
 	Sprite_Draw(g_Back[LINE].m_texid, { g_Back[LINE].m_pos.x, AREA_POSY_UNDER  }, g_Back[LINE].m_size, g_Back[LINE].m_texcoord, g_Back[LINE].m_texsize, { 0.0f, 1.0f, 0.0f, 1.0f });
+	if (g_BackDispTextItetu == true)
+	{
+		Sprite_Draw(g_Back[TEXT_ITETU].m_texid, g_Back[TEXT_ITETU].m_pos, g_Back[TEXT_ITETU].m_size, g_Back[TEXT_ITETU].m_texcoord, g_Back[TEXT_ITETU].m_texsize);
+	}
 
 	/* 弾丸表示 */
 	Sprite_Draw(g_BulletTexid, g_Bullet[BULLET01].m_pos, g_Bullet[BULLET01].m_size);
@@ -405,5 +466,4 @@ void GameDraw()
 	/* キャラクター表示 */
 	SpriteAnimDraw(g_Chara[RUNNER01].m_pid, g_Chara[RUNNER01].m_pos, g_Chara[RUNNER01].m_size);
 	SpriteAnimDraw(g_Chara[RUNNER02].m_pid, g_Chara[RUNNER02].m_pos, g_Chara[RUNNER02].m_size);
-
 }
